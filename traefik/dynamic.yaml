@@ -1,0 +1,58 @@
+
+http:
+  routers:
+    wildlife:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - websecure
+      service: wildlife-service
+      priority: 1
+      tls: {}
+
+    documentation:
+      rule: "PathPrefix(`/docs/`) || Path(`/docs`)"
+      entryPoints:
+        - websecure
+      service: documentation-service
+      middlewares:
+        - docs-trailing-slash
+        - docs-prefix
+      priority: 100
+      tls: {}
+
+  middlewares:
+    docs-trailing-slash:
+      redirectRegex:
+        regex: "^(https?://[^/]+/docs)$"
+        replacement: "${1}/"
+        permanent: true
+    docs-prefix:
+      stripPrefix:
+        prefixes:
+          - /docs
+
+  services:
+    wildlife-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 5s
+          timeout: 2s
+        servers:
+          - url: "http://10.10.10.107:8000"
+          - url: "http://10.10.10.108:8000"
+          - url: "http://10.10.10.109:8000"
+    documentation-service:
+      loadBalancer:
+        servers:
+          - url: "http://10.10.10.2:3000"
+
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/server.crt
+        keyFile: /etc/traefik/certs/server.key
+  options:
+    default:
+      minVersion: VersionTLS12
